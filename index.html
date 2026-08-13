@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Yashraj AI Studio</title><style>
+*{box-sizing:border-box}body{margin:0;background:#080d1c;color:#fff;font-family:Arial,sans-serif}.wrap{max-width:950px;margin:auto;padding:24px 16px}
+header{text-align:center;padding:25px 0}h1{font-size:38px;margin:8px}.muted{color:#aab4d0}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.card,.panel{background:#131a30;border:1px solid #293657;border-radius:18px;padding:20px}.card{cursor:pointer}.card:hover{border-color:#7280ff;transform:translateY(-2px)}.icon{font-size:42px}.panel{margin-top:18px;display:none}textarea,select{width:100%;background:#0c1224;color:#fff;border:1px solid #33405f;border-radius:12px;padding:13px;margin:10px 0 14px;font-size:16px}button{background:#6b78ff;color:#fff;border:0;border-radius:11px;padding:12px 18px;font-weight:bold;cursor:pointer}.out{margin-top:16px;background:#0c1224;border-radius:12px;padding:15px;white-space:pre-wrap}.out img{max-width:100%;border-radius:12px}.download{display:inline-block;margin-top:12px;color:#bfc7ff}.status{margin:12px 0;color:#c9d1ea}@media(max-width:700px){.grid{grid-template-columns:1fr}h1{font-size:30px}}
+</style></head><body><main class="wrap">
+<header><div style="font-size:50px">🤖</div><h1>Yashraj AI Studio</h1><div class="muted">AI Video • AI Image • AI Story</div></header>
+<section class="grid">
+<div class="card" onclick="show('video')"><div class="icon">🎬</div><h2>AI Video</h2><p class="muted">Generate a vertical AI video clip.</p></div>
+<div class="card" onclick="show('image')"><div class="icon">🖼️</div><h2>AI Image</h2><p class="muted">Generate an AI image from your idea.</p></div>
+<div class="card" onclick="show('story')"><div class="icon">✍️</div><h2>AI Story</h2><p class="muted">Create a complete Shorts story.</p></div>
+</section>
+<section id="panel" class="panel"><h2 id="title"></h2><p id="desc" class="muted"></p>
+<textarea id="idea" rows="5" placeholder="Example: Minecraft Steve saves a baby villager..."></textarea>
+<div id="extra"></div><button onclick="run()">Generate</button><div id="status" class="status"></div><div id="out" class="out" style="display:none"></div></section>
+</main>
+<script>
+let tool="";
+function show(t){tool=t;panel.style.display="block";out.style.display="none";status.textContent="";
+const d={video:["🎬 AI Video","Creates a 4-second vertical Sora 2 clip."],image:["🖼️ AI Image","Creates a 1024×1024 AI image."],story:["✍️ AI Story","Creates a 10–12 scene YouTube Shorts plan."]}[t];
+title.textContent=d[0];desc.textContent=d[1];idea.value="";
+extra.innerHTML=t==="video"?'<label>Seconds</label><select id="seconds"><option>4</option><option>8</option><option>12</option></select>':"";
+panel.scrollIntoView({behavior:"smooth"});
+}
+async function run(){
+const text=idea.value.trim(); if(!text)return alert("Enter an idea.");
+status.textContent="Generating…";out.style.display="none";
+try{
+let url="/api/"+tool, body={};
+if(tool==="story")body.idea=text;
+if(tool==="image")body.prompt=text;
+if(tool==="video"){body.prompt=text;body.seconds=document.getElementById("seconds").value;}
+const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+const d=await r.json();if(!r.ok)throw new Error(d.error||"Request failed");
+if(tool==="story"){out.textContent=d.text;out.style.display="block";status.textContent="Done."}
+if(tool==="image"){out.innerHTML=`<img src="${d.image}" alt="Generated image"><br><a class="download" href="${d.image}" download="yashraj-ai-image.png">Download image</a>`;out.style.display="block";status.textContent="Done."}
+if(tool==="video"){out.innerHTML="Video job: "+d.job.id+"<br>Status: "+d.job.status;out.style.display="block";poll(d.job.id)}
+}catch(e){status.textContent="";out.textContent=e.message;out.style.display="block"}
+}
+async function poll(id){
+const timer=setInterval(async()=>{try{const r=await fetch("/api/video/"+id);const d=await r.json();if(!r.ok)throw new Error(d.error);out.innerHTML="Video job: "+id+"<br>Status: "+d.job.status+"<br>Progress: "+(d.job.progress??0)+"%";if(d.job.status==="completed"){clearInterval(timer);out.innerHTML+="<br><a class='download' href='/api/video/"+id+"/content' download='yashraj-ai-video.mp4'>Download MP4</a>";status.textContent="Video ready."}else if(d.job.status==="failed"){clearInterval(timer);status.textContent="Video failed."}}catch(e){clearInterval(timer);status.textContent=e.message}},4000)
+}
+</script></body></html>
